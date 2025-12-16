@@ -110,7 +110,12 @@ class FlutterSmsPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Broadca
     this.result = result
     val intentFilter = IntentFilter()
     intentFilter.addAction(SENT_SMS_ACTION_NAME)
-    activity?.registerReceiver(this, intentFilter)
+    if(Build.VERSION.SDK_INT >= 34 && activity.getApplicationInfo().targetSdkVersion >= 34){
+      activity?.registerReceiver(this, intentFilter, Context.RECEIVER_EXPORTED);
+    } else {
+      activity?.registerReceiver(this, intentFilter);
+    }
+    
     
     // SmsManager is android.telephony
     val sentIntent = PendingIntent.getBroadcast(activity, 0, Intent("SMS_SENT_ACTION"), PendingIntent.FLAG_IMMUTABLE)
