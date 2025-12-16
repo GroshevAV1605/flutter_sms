@@ -27,6 +27,7 @@ class FlutterSmsPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Broadca
   private lateinit var mChannel: MethodChannel
   private var activity: Activity? = null
   private val REQUEST_CODE_SEND_SMS = 205
+  val TAG = "TRACK_SMS_STATUS";
 
   var result: Result? = null
 
@@ -63,9 +64,9 @@ class FlutterSmsPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Broadca
     mChannel.setMethodCallHandler(null)
   }
 
-  companion object {
-    const val SENT_SMS_ACTION_NAME = "SMS_SENT_ACTION"
-  }
+  // companion object {
+  //   const val SENT_SMS_ACTION_NAME = "SMS_SENT_ACTION"
+  // }
 
   override fun onMethodCall(call: MethodCall, result: Result) {
     when (call.method) {
@@ -108,28 +109,78 @@ class FlutterSmsPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Broadca
 
   private fun sendSMSDirect(result: Result, phones: String, message: String) {
     this.result = result
-    val intentFilter = IntentFilter()
-    intentFilter.addAction(SENT_SMS_ACTION_NAME)
-    activity?.registerReceiver(this, intentFilter, Context.RECEIVER_EXPORTED);
+    // val intentFilter = IntentFilter()
+    // intentFilter.addAction(SENT_SMS_ACTION_NAME)
+    // activity?.registerReceiver(this, intentFilter, Context.RECEIVER_EXPORTED);
     
     
     
     // SmsManager is android.telephony
-    val sentIntent = PendingIntent.getBroadcast(activity, 0, Intent("SMS_SENT_ACTION"), PendingIntent.FLAG_IMMUTABLE)
-    val mSmsManager = SmsManager.getDefault()
+    val send = "SMS_SENT"
+    val delivered = "SMS_DELIVERED"
+    val sentPI = PendingIntent.getBroadcast(activity, 0, Intent(send), PendingIntent.FLAG_IMMUTABLE)
+    val deliveredPI = PendingIntent.getBroadcast(activity, 0, Intent(delivered), PendingIntent.FLAG_IMMUTABLE)
+    //val mSmsManager = SmsManager.getDefault()
     val numbers = phones.split(";")
+    String number = numbers[0];
 
-    for (num in numbers) {
-      Log.d("Flutter SMS", "msg.length() : " + message.toByteArray().size)
-      if (message.toByteArray().size > 80) {
-        val partMessage = mSmsManager.divideMessage(message)
-        mSmsManager.sendMultipartTextMessage(num, null, partMessage, null, null)
-      } else {
-        mSmsManager.sendTextMessage(num, null, message, sentIntent, null)
+    registerReceiver(object : BroadcastReceiver() {
+      override fun onReceive(arg0: Context?, arg1: Intent?) {
+        val bundle: Bundle? = arg1?.extras
+        when (resultCode) {
+          AppCompatActivity.RESULT_OK -> {
+            Log.d(TAG, "SMS sent")
+          }
+          SmsManager.RESULT_ERROR_GENERIC_FAILURE -> {
+            Log.d(TAG, "Generic failure")
+            result?.error("${SmsManager.RESULT_ERROR_GENERIC_FAILURE}", "RESULT_ERROR_GENERIC_FAILURE", "RESULT_ERROR_GENERIC_FAILURE")
+          }
+          SmsManager.RESULT_ERROR_NO_SERVICE -> {
+            Log.d(TAG, "No service")
+            result?.error("${SmsManager.RESULT_ERROR_NO_SERVICE}", "RESULT_ERROR_NO_SERVICE", "No service for sending SMS")
+          }
+          SmsManager.RESULT_ERROR_NULL_PDU -> {
+            Log.d(TAG, "Null PDU")
+            result?.error("${SmsManager.RESULT_ERROR_NULL_PDU}", "RESULT_ERROR_NULL_PDU", "Null PDU")
+          }
+          SmsManager.RESULT_ERROR_RADIO_OFF -> {
+            Log.d(TAG, "Radio off")
+            result?.error("${SmsManager.RESULT_ERROR_RADIO_OFF}", "RESULT_ERROR_RADIO_OFF", "May airplane mode is turned off")
+          }
+        }
       }
-    }
+    }, IntentFilter(send))
 
-    result.success("SMS Sent!")
+    registerReceiver(object : BroadcastReceiver() {
+      override fun onReceive(arg0: Context?, arg1: Intent?) {
+        
+        when (resultCode) {
+          AppCompatActivity.RESULT_OK -> {
+            Log.d(TAG, "SMS delivered")
+            result?.success("${AppCompatActivity.RESULT_OK}", "RESULT_OK", "SMS delivered")
+          }
+          AppCompatActivity.RESULT_CANCELED -> {
+            Log.d(TAG, "SMS not delivered")
+            result?.error("${AppCompatActivity.RESULT_CANCELED}", "RESULT_CANCELED", "SMS not delivered")
+          }
+        }
+      }
+    }, IntentFilter(delivered))
+
+    val sms = SmsManager.getDefault()
+    sms.sendTextMessage(number, null, message, sentPI, deliveredPI)
+
+    // for (num in numbers) {
+    //   Log.d("Flutter SMS", "msg.length() : " + message.toByteArray().size)
+    //   if (message.toByteArray().size > 80) {
+    //     val partMessage = mSmsManager.divideMessage(message)
+    //     mSmsManager.sendMultipartTextMessage(num, null, partMessage, null, null)
+    //   } else {
+    //     mSmsManager.sendTextMessage(num, null, message, sentIntent, null)
+    //   }
+    // }
+
+    // result.success("SMS Sent!")
   }
 
   private fun sendSMSDialog(result: Result, phones: String, message: String) {
@@ -141,38 +192,38 @@ class FlutterSmsPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Broadca
     result.success("SMS Sent!")
   }
 
-  override fun onReceive(context: Context, intent: Intent) {
-    if (intent.action.equals(SENT_SMS_ACTION_NAME)) {
-      when (resultCode) {
-        Activity.RESULT_OK -> {
-          result?.success("SMS Sent!");
-        }
+  // override fun onReceive(context: Context, intent: Intent) {
+  //   if (intent.action.equals(SENT_SMS_ACTION_NAME)) {
+  //     when (resultCode) {
+  //       Activity.RESULT_OK -> {
+  //         result?.success("SMS Sent!");
+  //       }
 
-        111 -> {
-          result?.error("111", "RESULT_ERROR_NO_CREDIT", "RESULT_ERROR_NO_CREDIT")
-        }
+  //       111 -> {
+  //         result?.error("111", "RESULT_ERROR_NO_CREDIT", "RESULT_ERROR_NO_CREDIT")
+  //       }
 
-        SmsManager.RESULT_ERROR_NO_SERVICE -> {
-          result?.error("${SmsManager.RESULT_ERROR_NO_SERVICE}", "RESULT_ERROR_NO_SERVICE", "No service for sending SMS")
-        }
+  //       SmsManager.RESULT_ERROR_NO_SERVICE -> {
+  //         result?.error("${SmsManager.RESULT_ERROR_NO_SERVICE}", "RESULT_ERROR_NO_SERVICE", "No service for sending SMS")
+  //       }
 
-        SmsManager.RESULT_ERROR_NULL_PDU -> {
-          result?.error("${SmsManager.RESULT_ERROR_NULL_PDU}", "RESULT_ERROR_NULL_PDU", "Null PDU")
+  //       SmsManager.RESULT_ERROR_NULL_PDU -> {
+  //         result?.error("${SmsManager.RESULT_ERROR_NULL_PDU}", "RESULT_ERROR_NULL_PDU", "Null PDU")
 
-        }
+  //       }
 
-        SmsManager.RESULT_ERROR_RADIO_OFF -> {
-          result?.error("${SmsManager.RESULT_ERROR_RADIO_OFF}", "RESULT_ERROR_RADIO_OFF", "May airplane mode is turned off")
-        }
+  //       SmsManager.RESULT_ERROR_RADIO_OFF -> {
+  //         result?.error("${SmsManager.RESULT_ERROR_RADIO_OFF}", "RESULT_ERROR_RADIO_OFF", "May airplane mode is turned off")
+  //       }
 
-        else -> {
-          result?.error("${SmsManager.RESULT_ERROR_GENERIC_FAILURE}", "RESULT_ERROR_GENERIC_FAILURE", "RESULT_ERROR_GENERIC_FAILURE")
-        }
-      }
-    }
+  //       else -> {
+  //         result?.error("${SmsManager.RESULT_ERROR_GENERIC_FAILURE}", "RESULT_ERROR_GENERIC_FAILURE", "RESULT_ERROR_GENERIC_FAILURE")
+  //       }
+  //     }
+  //   }
 
-    activity?.unregisterReceiver(
-      this
-    )
-  }
+  //   activity?.unregisterReceiver(
+  //     this
+  //   )
+  // }
 }
