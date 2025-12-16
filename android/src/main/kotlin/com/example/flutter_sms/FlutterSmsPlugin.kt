@@ -110,7 +110,7 @@ class FlutterSmsPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, Broadca
     this.result = result
     val intentFilter = IntentFilter()
     intentFilter.addAction(SENT_SMS_ACTION_NAME)
-    if(Build.VERSION.SDK_INT >= 34 && activity.getApplicationInfo().targetSdkVersion >= 34){
+    if(Build.VERSION.SDK_INT >= 34 && activity?.getApplicationInfo().targetSdkVersion >= 34){
       activity?.registerReceiver(this, intentFilter, Context.RECEIVER_EXPORTED);
     } else {
       activity?.registerReceiver(this, intentFilter);
