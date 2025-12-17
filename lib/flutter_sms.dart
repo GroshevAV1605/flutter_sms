@@ -5,12 +5,12 @@ import 'src/flutter_sms_platform.dart';
 /// Open SMS Dialog on iOS/Android/Web
 Future<String> sendSMS({
   required String message,
-  required List<String> recipients,
+  required String recipient,
   bool sendDirect = false,
 }) =>
     FlutterSmsPlatform.instance.sendSMS(
       message: message,
-      recipients: recipients,
+      recipients: [recipient],
       sendDirect: sendDirect,
     );
 

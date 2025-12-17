@@ -36,18 +36,18 @@ class FlutterSmsPlatform extends PlatformInterface {
   ///
   Future<String> sendSMS({
     required String message,
-    required String recipient,
+    required List<String> recipients,
     bool sendDirect = false,
   }) {
     final mapData = <dynamic, dynamic>{};
     mapData['message'] = message;
     if (!kIsWeb && Platform.isIOS) {
-      mapData['recipients'] = [recipient];
+      mapData['recipients'] = recipients;
       return _channel
           .invokeMethod<String>('sendSMS', mapData)
           .then((value) => value ?? 'Error sending sms');
     } else {
-      String _phones = recipient;
+      String _phones = recipients.join(';');
       mapData['recipients'] = _phones;
       mapData['sendDirect'] = sendDirect;
       return _channel
